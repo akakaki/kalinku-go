@@ -25,14 +25,81 @@
   :class="tw([\
     'relative',\
     'z-10',\
+    'flex',\
+    'overflow-hidden',\
+    'transition-all',\
+    'duration-200',\
+    switchHistoryList ? 'ml-[-120px]' : '',\
   ])"
 )
-  #mountain(
+  .mountain__container(
     :class="tw([\
-      'h-screen',\
-      'w-screen',\
+      'relative',\
     ])"
   )
+    #mountain(
+      :class="tw([\
+        'h-screen',\
+        'w-screen',\
+        'z-10',\
+      ])"
+    )
+    .history__switch(
+      :class="tw([\
+        'cursor-pointer',\
+        'absolute',\
+        'top-3',\
+        'right-3',\
+        'z-10',\
+        'text-[20px]',\
+        'transition-all',\
+        'duration-200',\
+        switchHistoryList ? 'bg-gray-600' : 'bg-white',\
+        'rounded-full',\
+        'h-10',\
+        'w-10',\
+        'flex',\
+        'items-center',\
+        'justify-center',\
+        'pt-[6px]',\
+        'shadow-xl',\
+      ])"
+      @click="history"
+    ) 📚
+  .history__wrap(
+    :class="tw([\
+      'w-[120px]',\
+      'flex-shrink-0',\
+      'overflow-y-auto',\
+      'h-screen',\
+      'relative',\
+      'z-10',\
+      switchHistoryList ? 'shadow-lg' : '',\
+    ])"
+  )
+    .history__label(
+      :class="tw([\
+        'my-2',\
+        'font-bold',\
+      ])"
+    ) 歷史紀錄
+    .history__list(
+      :class="tw([\
+        'p-2',\
+      ])"
+    )
+      .history__item(
+        v-for="item of list"
+        :class="tw([\
+          'border-b',\
+          'mb-2',\
+        ])"
+      )
+        span(
+          :class="tw([\
+            'mt-2',\
+          ])"
+        ) {{ formatTimer(item.time) }}
 </template>
 
 <script>
@@ -48,7 +115,7 @@ export default {
 
   setup () {
     const loading = ref(false)
-    const mapObject = ref(null)
+    let mapObject = null
     const list = ref([])
     const lastItem = ref({})
 
@@ -56,7 +123,7 @@ export default {
       const defaultCoordinate = {latitude: 24.1096584, longitude: 120.6190964}
       const coordinate = Object.keys(lastItem.value).length ? lastItem.value : defaultCoordinate
 
-      mapObject.value = L.map('mountain', {
+      mapObject = L.map('mountain', {
         // 緯度(latitude)、經度(longitude)
         center: [coordinate.latitude, coordinate.longitude],
         zoom: 16,
@@ -66,7 +133,7 @@ export default {
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {  attribution: false },
       )
-        .addTo(mapObject.value)
+        .addTo(mapObject)
 
       if (!Object.keys(lastItem.value).length) {
         tileLayer.getContainer().classList.add(tw(['filter']), tw('grayscale'), tw(['blur-sm']))
@@ -80,25 +147,31 @@ export default {
         })
       })
 
-      marker.addTo(mapObject.value)
+      marker.addTo(mapObject)
 
       // set ago time
+      const timeYearBefore = dayjs().diff(dayjs(lastItem.value.time), 'year')
+      const timeMonthBefore = dayjs().diff(dayjs(lastItem.value.time), 'month')
+      const timeDayBefore = dayjs().diff(dayjs(lastItem.value.time), 'day')
       const timeHourBefore = dayjs().diff(dayjs(lastItem.value.time), 'hour')
       const timeMinuteBefore = dayjs().diff(dayjs(lastItem.value.time), 'minute')
       const timeSecondBefore = dayjs().diff(dayjs(lastItem.value.time), 'second')
-      const timeBefore = timeHourBefore || timeMinuteBefore || timeSecondBefore
-      const timeBeforeLabel = timeHourBefore ? '小時' : timeMinuteBefore ? '分鐘' : timeSecondBefore ? '秒' : '🥳'
+      const timeBefore = timeYearBefore || timeMonthBefore || timeDayBefore || timeHourBefore || timeMinuteBefore || timeSecondBefore
+      console.log('timeBefore', lastItem.value.time)
+      const timeBeforeLabel = timeYearBefore ? '年' : timeMonthBefore ? '月' : timeDayBefore ? '天' : timeHourBefore ? '小時' : timeMinuteBefore ? '分鐘' : timeSecondBefore ? '秒' : '🥳'
+
+      const botIcon = ['🤖', '🏃🏽‍♂️', '⛰', '📍', '🙌🏻', '💫', '🛵', '🏍', '🚀', '🛸']
+      const randomBotIconIndex = Math.floor(Math.random() * botIcon.length)
+
 
       // remark
-      if (lastItem.value.remark) {
-        marker.bindPopup(`
-          <div class="${tw(['flex', 'flex-col', 'items-end'])}">
-            <span class="${tw(['text-base'])}">${lastItem.value.remark}</span>
-            <span class="${tw(['text-gray-400', 'text-xs', 'mt-4'])}">${timeBefore}${timeBeforeLabel}前更新</span>
-          </div>
-        `)
-        marker.openPopup()
-      } else marker.bindPopup(`<div>${timeBefore}${timeBeforeLabel}前更新</div>`)
+      marker.bindPopup(`
+        <div class="${tw(['flex', 'flex-col', 'min-w-[10vw]'])}">
+          <span class="${tw(['text-base', 'break-all'])}">${lastItem.value.remark || botIcon[randomBotIconIndex]}</span>
+          <div class="${tw(['text(xs right gray-400)', 'mt-2'])}">${timeBefore}${timeBeforeLabel}前更新</div>
+        </div>
+      `)
+      marker.openPopup()
 
       document.querySelector('.leaflet-control-attribution').remove()
     }
@@ -125,6 +198,15 @@ export default {
       initMapCanvas()
     }
 
+    const formatTimer = (string) => {
+      return dayjs(string).format('YYYY-MM-DD HH:mm:ss')
+    }
+
+    const switchHistoryList = ref(false)
+    const history = () => {
+      switchHistoryList.value = !switchHistoryList.value
+    }
+
     onMounted(() => {
       nextTick(() => {
         init()      
@@ -132,9 +214,11 @@ export default {
     })
 
     return {
-      mapObject,
       loading,
       list,
+      formatTimer,
+      history,
+      switchHistoryList,
     }
   }
 }
