@@ -44,28 +44,51 @@
         'z-10',\
       ])"
     )
-    .history__switch(
+    .switch(
       :class="tw([\
-        'cursor-pointer',\
         'absolute',\
         'top-3',\
         'right-3',\
         'z-10',\
-        'text-[20px]',\
-        'transition-all',\
-        'duration-200',\
-        switchHistoryList ? 'bg-gray-600' : 'bg-white',\
-        'rounded-full',\
-        'h-10',\
-        'w-10',\
-        'flex',\
-        'items-center',\
-        'justify-center',\
-        'pt-[6px]',\
-        'shadow-xl',\
       ])"
-      @click="history"
-    ) 📚
+    )
+      .history__switch(
+        :class="tw([\
+          'cursor-pointer',\
+          'text-[20px]',\
+          'transition-all',\
+          'duration-200',\
+          switchHistoryList ? 'bg-gray-600' : 'bg-white',\
+          'rounded-full',\
+          'h-10',\
+          'w-10',\
+          'flex',\
+          'items-center',\
+          'justify-center',\
+          'pt-[6px]',\
+          'shadow-xl',\
+          'mb-4',\
+        ])"
+        @click="history"
+      ) 📚
+      .tips__switch(
+        :class="tw([\
+          'cursor-pointer',\
+          'text-[20px]',\
+          'transition-all',\
+          'duration-200',\
+          switchTips ? 'bg-gray-600' : 'bg-white',\
+          'rounded-full',\
+          'h-10',\
+          'w-10',\
+          'flex',\
+          'items-center',\
+          'justify-center',\
+          'pt-[6px]',\
+          'shadow-xl',\
+        ])"
+        @click="tips"
+      ) 💡
   .history__wrap(
     :class="tw([\
       'w-[120px]',\
@@ -95,9 +118,18 @@
           'mb-2',\
         ])"
       )
-        span(
+        div(
           :class="tw([\
             'mt-2',\
+            'text-xs',\
+          ])"
+        )
+          | 經緯 {{ item.latitude.toFixed(4) }},
+          | 經度 {{ item.longitude.toFixed(4) }}
+        div(
+          :class="tw([\
+            'mt-2',\
+            'text-xs',\
           ])"
         ) {{ formatTimer(item.time) }}
 </template>
@@ -118,6 +150,7 @@ export default {
     let mapObject = null
     const list = ref([])
     const lastItem = ref({})
+    const marker = ref(null)
 
     const initMapCanvas = () => {
       const defaultCoordinate = {latitude: 24.1096584, longitude: 120.6190964}
@@ -140,14 +173,14 @@ export default {
         return false
       }
 
-      const marker = L.marker([lastItem.value.latitude, lastItem.value.longitude], {
+      marker.value = L.marker([lastItem.value.latitude, lastItem.value.longitude], {
         icon: new L.divIcon({
           className: tw(['bg-green-500', 'rounded-full', 'border', 'border-white']),
           html: `<span class="${tw(['bg-green-500', 'rounded-full', 'animate-ping', 'block', 'h-full'])}"></span>`,
         })
       })
 
-      marker.addTo(mapObject)
+      marker.value.addTo(mapObject)
 
       // set ago time
       const timeYearBefore = dayjs().diff(dayjs(lastItem.value.time), 'year')
@@ -165,13 +198,13 @@ export default {
 
 
       // remark
-      marker.bindPopup(`
+      marker.value.bindPopup(`
         <div class="${tw(['flex', 'flex-col', 'min-w-[10vw]'])}">
           <span class="${tw(['text-base', 'break-all'])}">${lastItem.value.remark || botIcon[randomBotIconIndex]}</span>
           <div class="${tw(['text(xs right gray-400)', 'mt-2'])}">${timeBefore}${timeBeforeLabel}前更新</div>
         </div>
       `)
-      marker.openPopup()
+      marker.value.openPopup()
 
       document.querySelector('.leaflet-control-attribution').remove()
     }
@@ -199,12 +232,18 @@ export default {
     }
 
     const formatTimer = (string) => {
-      return dayjs(string).format('YYYY-MM-DD HH:mm:ss')
+      return dayjs(string).format('YY-MM-DD HH:mm')
     }
 
     const switchHistoryList = ref(false)
     const history = () => {
       switchHistoryList.value = !switchHistoryList.value
+    }
+
+    const switchTips = ref(false)
+    const tips = () => {
+      switchTips.value = !switchTips.value
+      switchTips.value ? marker.value.openPopup() : marker.value.closePopup()
     }
 
     onMounted(() => {
@@ -219,6 +258,8 @@ export default {
       formatTimer,
       history,
       switchHistoryList,
+      switchTips,
+      tips,
     }
   }
 }
